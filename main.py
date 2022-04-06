@@ -10,7 +10,7 @@ import time
 from qiskit import QuantumCircuit, transpile
 os.system('cls' if os.name == 'nt' else 'clear')
 
-dir_name = "ref_tst"
+dir_name = "benchmarks"
 ref_dir_path = "./" + dir_name
 
 def writeEval(rows):
@@ -44,7 +44,7 @@ def evaluate_file(qasm):
     ibm_basis       = ['sx', 'rz', 'rzx'] # rzx is cross-resonance gate
     rigetti_basis   = ['sx', 'rz', 'cz']
     ion_basis       = ['r',  'rz', 'rxx'] # rxx is xx(x) gates
-    google_basis    = ['r',  'rz', 'cz', 'cx']
+    google_basis    = ['r',  'rz', 'cz', 'iswap']
 
     machines = {"ibm": ibm_basis, 
                 "ion": ion_basis,
