@@ -10,7 +10,10 @@ import time
 from qiskit import QuantumCircuit, transpile
 os.system('cls' if os.name == 'nt' else 'clear')
 
-dir_name = "pattern1"
+DEBUG =1
+
+dir_name = "single_gate"
+
 ref_dir_path = "./" + dir_name
 
 def writeEval(rows):
@@ -44,31 +47,45 @@ def evaluate_file(qasm):
     ibm_basis       = ['sx', 'rz', 'rzx'] # rzx is cross-resonance gate
     rigetti_basis   = ['sx', 'rz', 'cz']
     ion_basis       = ['r',  'rz', 'rxx'] # rxx is xx(x) gates
-    google_basis    = ['r',  'rz', 'cz', 'cx']
+    google_basis    = ['r',  'rz', 'iswap']
 
     machines = {"ibm": ibm_basis, 
                 "ion": ion_basis,
                 "rigetti": rigetti_basis, 
                 "google": google_basis}
 
-    iter = 10
+    iter = 1
 
     m_size = np.zeros(num_of_machine)
     m_depth = np.zeros(num_of_machine)
 
+    if DEBUG == 1:
+        print("Original circuit")
+        print(qc)
+
     for i in range(iter):
         depths, sizes = [], []
         for m,basis in machines.items():
+            
             temp_qc = transpile(qc, basis_gates=basis, optimization_level=0)
+            # if m == 'ibm' or m == 'ion':
+            #     print("Machine: " , m)
+            #     print(temp_qc)
+            if DEBUG == 1:
+                print("Machine: " , m)
+                print(temp_qc)
             depths.append(temp_qc.depth())
             sizes.append(temp_qc.size())
         m_size += np.array(sizes)
         m_depth += np.array(depths)
+        
     
     # get average from  iteration
     m_size /= iter
     m_depth /= iter
-    
+
+    print("-- ", name)
+
     # Append name, number of qubits, original size, [each of machines native gate], 
     # original circuit depth, [each of machines circuit depth]
     return [name, qc.num_qubits, qc.size()]+ m_size.tolist() + [qc.depth()] + m_depth.tolist()
@@ -79,14 +96,15 @@ if __name__ == "__main__":
     rows = []
     paths_list = [ p for p in os.listdir(ref_dir_path) if not p.startswith('.')]
 
-    # for i in paths_list:
-    #     evaluate_file(i)
-    #     break;
-    pool = Pool(48)
-    rows = pool.map(evaluate_file, paths_list)
-
-    pool.close()
-    writeEval(rows)
+    if DEBUG==1:
+        for i in paths_list:
+            evaluate_file(i)
+            break;
+    else:
+        pool = Pool(48)
+        rows = pool.map(evaluate_file, paths_list)
+        pool.close()
+        writeEval(rows)
     print("DONE with --- %s seconds ---" % (time.time() - start_time))
 
 
