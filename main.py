@@ -2,9 +2,10 @@ import os
 import csv
 from math import pi, ceil
 from re import M
+from sympy import EvaluationFailed
 from tqdm import tqdm
 import numpy as np
-from multiprocessing import Pool
+from multiprocessing import Pool, cpu_count
 import time
 
 from qiskit import QuantumCircuit, transpile
@@ -12,7 +13,9 @@ os.system('cls' if os.name == 'nt' else 'clear')
 
 DEBUG =1
 
+# dir_name = "benchmarks"
 dir_name = "single_gate"
+dir_name = "multi_qubit_gate"
 
 ref_dir_path = "./" + dir_name
 
@@ -47,7 +50,7 @@ def evaluate_file(qasm):
     ibm_basis       = ['sx', 'rz', 'rzx'] # rzx is cross-resonance gate
     rigetti_basis   = ['sx', 'rz', 'cz']
     ion_basis       = ['r',  'rz', 'rxx'] # rxx is xx(x) gates
-    google_basis    = ['r',  'rz', 'iswap']
+    google_basis    = ['r',  'rz', 'cz', 'iswap']
 
     machines = {"ibm": ibm_basis, 
                 "ion": ion_basis,
@@ -68,11 +71,12 @@ def evaluate_file(qasm):
         for m,basis in machines.items():
             
             temp_qc = transpile(qc, basis_gates=basis, optimization_level=0)
-            # if m == 'ibm' or m == 'ion':
+            # if m == 'rigetti' or m == 'google':
+            #     continue
             #     print("Machine: " , m)
             #     print(temp_qc)
             if DEBUG == 1:
-                print("Machine: " , m)
+                print("Machine: " , m , " -- Gate: " , temp_qc.size())
                 print(temp_qc)
             depths.append(temp_qc.depth())
             sizes.append(temp_qc.size())
@@ -84,7 +88,7 @@ def evaluate_file(qasm):
     m_size /= iter
     m_depth /= iter
 
-    print("-- ", name)
+    print("-- ", name , ": ", qc.size(), " gates")
 
     # Append name, number of qubits, original size, [each of machines native gate], 
     # original circuit depth, [each of machines circuit depth]
@@ -101,8 +105,9 @@ if __name__ == "__main__":
             evaluate_file(i)
             break;
     else:
-        pool = Pool(48)
-        rows = pool.map(evaluate_file, paths_list)
+        print("CPUs work with : ", cpu_count() - 1)
+        pool = Pool(processes=cpu_count() - 1)
+        rows = pool.map(evaluate_file, paths_list, chunksize=1)
         pool.close()
         writeEval(rows)
     print("DONE with --- %s seconds ---" % (time.time() - start_time))
