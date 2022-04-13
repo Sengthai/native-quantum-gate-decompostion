@@ -1,8 +1,5 @@
 import os
 import csv
-from math import pi, ceil
-from re import M
-from sympy import EvaluationFailed
 from tqdm import tqdm
 import numpy as np
 from multiprocessing import Pool, cpu_count
@@ -11,11 +8,10 @@ import time
 from qiskit import QuantumCircuit, transpile
 os.system('cls' if os.name == 'nt' else 'clear')
 
-DEBUG =1
+DEBUG = 0
 
-# dir_name = "benchmarks"
-dir_name = "single_gate"
-dir_name = "multi_qubit_gate"
+dir_name = "benchmarks"
+
 
 ref_dir_path = "./" + dir_name
 
@@ -71,10 +67,6 @@ def evaluate_file(qasm):
         for m,basis in machines.items():
             
             temp_qc = transpile(qc, basis_gates=basis, optimization_level=0)
-            # if m == 'rigetti' or m == 'google':
-            #     continue
-            #     print("Machine: " , m)
-            #     print(temp_qc)
             if DEBUG == 1:
                 print("Machine: " , m , " -- Gate: " , temp_qc.size())
                 print(temp_qc)
