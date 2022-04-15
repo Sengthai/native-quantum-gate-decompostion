@@ -5,7 +5,7 @@ import numpy as np
 from multiprocessing import Pool, cpu_count
 import time
 
-from qiskit import QuantumCircuit, transpile
+from qiskit import QuantumCircuit, transpile, Aer
 os.system('cls' if os.name == 'nt' else 'clear')
 
 DEBUG = 0
@@ -22,7 +22,9 @@ def writeEval(rows):
         header = ['cir','qubit', 'origin_gate', 'ibm_gate', 
                     'ionq_gate','riggit_gate','google_gate',
                     'ori_depth','ibm_depth', 'ionq_depth',
-                     'riggit_depth','google_depth'] 
+                     'riggit_depth','google_depth',
+                     'ibm_gates', 'ionq_gate', 'riggit_gates', 'google_gates'
+                     ] 
         writer.writerow(header)
         for row in tqdm(rows):
             writer.writerow(row)
@@ -53,38 +55,38 @@ def evaluate_file(qasm):
                 "rigetti": rigetti_basis, 
                 "google": google_basis}
 
-    iter = 1
-
-    m_size = np.zeros(num_of_machine)
-    m_depth = np.zeros(num_of_machine)
+    m_size, m_depth, m_gates = [], [], []
 
     if DEBUG == 1:
         print("Original circuit")
         print(qc)
 
-    for i in range(iter):
-        depths, sizes = [], []
-        for m,basis in machines.items():
-            
-            temp_qc = transpile(qc, basis_gates=basis, optimization_level=0)
-            if DEBUG == 1:
-                print("Machine: " , m , " -- Gate: " , temp_qc.size())
-                print(temp_qc)
-            depths.append(temp_qc.depth())
-            sizes.append(temp_qc.size())
-        m_size += np.array(sizes)
-        m_depth += np.array(depths)
+    for m,basis in machines.items():
+
+        temp_qc = transpile(qc, basis_gates=basis, optimization_level=0)
+        gate_cxt = ""
+
+        for gate, c in  dict(sorted(temp_qc.count_ops().items())).items():
+            if gate == "r":
+                gate = "Rxy"
+            if gate == "measure" or gate == "barrier":
+                continue
+            gate_cxt += gate.capitalize() + ": " + str(c)  + ", "
+
+        if DEBUG == 1:
+            print("Machine: " , m , " -- Gate: " , temp_qc.size())
+            print(temp_qc)
+
+        m_depth.append(temp_qc.depth())
+        m_size.append(temp_qc.size())
+        m_gates.append(gate_cxt[:-2])
         
-    
-    # get average from  iteration
-    m_size /= iter
-    m_depth /= iter
 
     print("-- ", name , ": ", qc.size(), " gates")
 
     # Append name, number of qubits, original size, [each of machines native gate], 
     # original circuit depth, [each of machines circuit depth]
-    return [name, qc.num_qubits, qc.size()]+ m_size.tolist() + [qc.depth()] + m_depth.tolist()
+    return [name, qc.num_qubits, qc.size()] + m_size + [qc.depth()] + m_depth + m_gates
 
 if __name__ == "__main__":
     start_time = time.time()
@@ -95,11 +97,11 @@ if __name__ == "__main__":
     if DEBUG==1:
         for i in paths_list:
             evaluate_file(i)
-            break;
+            break
     else:
         print("CPUs work with : ", cpu_count() - 1)
         pool = Pool(processes=cpu_count() - 1)
-        rows = pool.map(evaluate_file, paths_list, chunksize=1)
+        rows = pool.map(evaluate_file, paths_list)
         pool.close()
         writeEval(rows)
     print("DONE with --- %s seconds ---" % (time.time() - start_time))
